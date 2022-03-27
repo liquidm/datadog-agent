@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/DataDog/datadog-agent/pkg/security/api"
+	"github.com/DataDog/datadog-agent/pkg/security/config"
 	seclog "github.com/DataDog/datadog-agent/pkg/security/log"
 	"github.com/DataDog/datadog-agent/pkg/security/metrics"
 	"github.com/DataDog/datadog-agent/pkg/security/secl/model"
@@ -42,6 +43,7 @@ type ActivityDumpManager struct {
 	tracedEventTypesMap  *ebpf.Map
 	tracedCgroupsMap     *ebpf.Map
 	cgroupWaitListMap    *ebpf.Map
+	statsdClient         *statsd.Client
 	tracedEventTypes     []model.EventType
 	outputDirectory      string
 
@@ -56,10 +58,10 @@ func (adm *ActivityDumpManager) Start(ctx context.Context, wg *sync.WaitGroup) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	ticker := time.NewTicker(adm.cleanupPeriod)
+	ticker := time.NewTicker(adm.config.ActivityDumpCleanupPeriod)
 	defer ticker.Stop()
 
-	tagsTicker := time.NewTicker(adm.tagsResolutionPeriod)
+	tagsTicker := time.NewTicker(adm.config.ActivityDumpTagsResolutionPeriod)
 	defer tagsTicker.Stop()
 
 	for {
@@ -152,6 +154,7 @@ func NewActivityDumpManager(p *Probe) (*ActivityDumpManager, error) {
 
 	return &ActivityDumpManager{
 		probe:                p,
+		statsdClient:         client,
 		tracedPIDsMap:        tracedPIDs,
 		tracedCommsMap:       tracedComms,
 		tracedEventTypesMap:  tracedEventTypesMap,
@@ -236,9 +239,9 @@ func (adm *ActivityDumpManager) HandleCgroupTracingEvent(event *model.CgroupTrac
 	newDump, err := NewActivityDump(adm, func(ad *ActivityDump) {
 		ad.ContainerID = event.ContainerContext.ID
 		ad.Timeout = adm.probe.resolvers.TimeResolver.ResolveMonotonicTimestamp(event.TimeoutRaw).Sub(time.Now())
-		ad.DifferentiateArgs = true
-		ad.WithGraph = true
-		ad.OutputDirectory = adm.outputDirectory
+		ad.DifferentiateArgs = adm.config.ActivityDumpCgroupDifferentiateGraphs
+		ad.WithGraph = adm.config.ActivityDumpCgroupGenerateGraph
+		ad.OutputDirectory = adm.config.ActivityDumpCgroupOutputDirectory
 		ad.OutputFormat = MSGP
 	})
 	if err != nil {
