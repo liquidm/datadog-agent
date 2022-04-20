@@ -10,8 +10,9 @@ package module
 
 import (
 	sprobe "github.com/DataDog/datadog-agent/pkg/security/probe"
+	"github.com/DataDog/datadog-agent/pkg/security/secl/model"
 	"github.com/DataDog/datadog-agent/pkg/security/secl/rules"
-	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"time"
 )
 
 // ProcessMonitoring describes a process monitoring object
@@ -19,21 +20,29 @@ type ProcessMonitoring struct {
 	module *Module
 }
 
+// ProcessEvent is an event sent by the ProcessMonitoring module
+type ProcessEvent struct {
+	*model.ProcessCacheEntry
+	EventType string
+	Date      time.Time
+}
+
 // HandleEvent implement the EventHandler interface
 func (p *ProcessMonitoring) HandleEvent(event *sprobe.Event) {
+	// Force resolution of all event fields before exposing it through the API server
+	event.ResolveFields()
+	event.ResolveEventTimestamp()
+
 	entry := event.ResolveProcessCacheEntry()
 	if entry == nil {
 		return
 	}
 
-	data, err := entry.MarshalMsg(nil)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	// data to send
-	_ = data
+	p.module.apiServer.SendProcessEvent(&ProcessEvent{
+		ProcessCacheEntry: entry,
+		EventType:         event.GetEventType().String(),
+		Date:              event.Timestamp,
+	})
 }
 
 // HandleCustomEvent implement the EventHandler interface
