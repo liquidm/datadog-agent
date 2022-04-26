@@ -30,6 +30,7 @@ func (m *Model) GetIterator(field eval.Field) (eval.Iterator, error) {
 }
 func (m *Model) GetEventTypes() []eval.EventType {
 	return []eval.EventType{
+		eval.EventType("bind"),
 		eval.EventType("bpf"),
 		eval.EventType("capset"),
 		eval.EventType("chmod"),
@@ -59,6 +60,46 @@ func (m *Model) GetEventTypes() []eval.EventType {
 }
 func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Evaluator, error) {
 	switch field {
+	case "bind.addr":
+		return &eval.StringEvaluator{
+			EvalFnc: func(ctx *eval.Context) string {
+				return (*Event)(ctx.Object).Bind.Addr
+			},
+			Field:  field,
+			Weight: eval.FunctionWeight,
+		}, nil
+	case "bind.addr_family":
+		return &eval.IntEvaluator{
+			EvalFnc: func(ctx *eval.Context) int {
+				return int((*Event)(ctx.Object).Bind.AddrFamily)
+			},
+			Field:  field,
+			Weight: eval.FunctionWeight,
+		}, nil
+	case "bind.port":
+		return &eval.IntEvaluator{
+			EvalFnc: func(ctx *eval.Context) int {
+				return int((*Event)(ctx.Object).Bind.AddrPort)
+			},
+			Field:  field,
+			Weight: eval.FunctionWeight,
+		}, nil
+	case "bind.retval":
+		return &eval.IntEvaluator{
+			EvalFnc: func(ctx *eval.Context) int {
+				return int((*Event)(ctx.Object).Bind.SyscallEvent.Retval)
+			},
+			Field:  field,
+			Weight: eval.FunctionWeight,
+		}, nil
+	case "bind.socket":
+		return &eval.IntEvaluator{
+			EvalFnc: func(ctx *eval.Context) int {
+				return int((*Event)(ctx.Object).Bind.Socket)
+			},
+			Field:  field,
+			Weight: eval.FunctionWeight,
+		}, nil
 	case "bpf.cmd":
 		return &eval.IntEvaluator{
 			EvalFnc: func(ctx *eval.Context) int {
@@ -6990,6 +7031,11 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 }
 func (e *Event) GetFields() []eval.Field {
 	return []eval.Field{
+		"bind.addr",
+		"bind.addr_family",
+		"bind.port",
+		"bind.retval",
+		"bind.socket",
 		"bpf.cmd",
 		"bpf.map.name",
 		"bpf.map.type",
@@ -7620,6 +7666,16 @@ func (e *Event) GetFields() []eval.Field {
 }
 func (e *Event) GetFieldValue(field eval.Field) (interface{}, error) {
 	switch field {
+	case "bind.addr":
+		return e.Bind.Addr, nil
+	case "bind.addr_family":
+		return int(e.Bind.AddrFamily), nil
+	case "bind.port":
+		return int(e.Bind.AddrPort), nil
+	case "bind.retval":
+		return int(e.Bind.SyscallEvent.Retval), nil
+	case "bind.socket":
+		return int(e.Bind.Socket), nil
 	case "bpf.cmd":
 		return int(e.BPF.Cmd), nil
 	case "bpf.map.name":
@@ -10231,6 +10287,16 @@ func (e *Event) GetFieldValue(field eval.Field) (interface{}, error) {
 }
 func (e *Event) GetFieldEventType(field eval.Field) (eval.EventType, error) {
 	switch field {
+	case "bind.addr":
+		return "bind", nil
+	case "bind.addr_family":
+		return "bind", nil
+	case "bind.port":
+		return "bind", nil
+	case "bind.retval":
+		return "bind", nil
+	case "bind.socket":
+		return "bind", nil
 	case "bpf.cmd":
 		return "bpf", nil
 	case "bpf.map.name":
@@ -11488,6 +11554,16 @@ func (e *Event) GetFieldEventType(field eval.Field) (eval.EventType, error) {
 }
 func (e *Event) GetFieldType(field eval.Field) (reflect.Kind, error) {
 	switch field {
+	case "bind.addr":
+		return reflect.String, nil
+	case "bind.addr_family":
+		return reflect.Int, nil
+	case "bind.port":
+		return reflect.Int, nil
+	case "bind.retval":
+		return reflect.Int, nil
+	case "bind.socket":
+		return reflect.Int, nil
 	case "bpf.cmd":
 		return reflect.Int, nil
 	case "bpf.map.name":
@@ -12745,6 +12821,41 @@ func (e *Event) GetFieldType(field eval.Field) (reflect.Kind, error) {
 }
 func (e *Event) SetFieldValue(field eval.Field, value interface{}) error {
 	switch field {
+	case "bind.addr":
+		str, ok := value.(string)
+		if !ok {
+			return &eval.ErrValueTypeMismatch{Field: "Bind.Addr"}
+		}
+		e.Bind.Addr = str
+		return nil
+	case "bind.addr_family":
+		v, ok := value.(int)
+		if !ok {
+			return &eval.ErrValueTypeMismatch{Field: "Bind.AddrFamily"}
+		}
+		e.Bind.AddrFamily = uint16(v)
+		return nil
+	case "bind.port":
+		v, ok := value.(int)
+		if !ok {
+			return &eval.ErrValueTypeMismatch{Field: "Bind.AddrPort"}
+		}
+		e.Bind.AddrPort = uint16(v)
+		return nil
+	case "bind.retval":
+		v, ok := value.(int)
+		if !ok {
+			return &eval.ErrValueTypeMismatch{Field: "Bind.SyscallEvent.Retval"}
+		}
+		e.Bind.SyscallEvent.Retval = int64(v)
+		return nil
+	case "bind.socket":
+		v, ok := value.(int)
+		if !ok {
+			return &eval.ErrValueTypeMismatch{Field: "Bind.Socket"}
+		}
+		e.Bind.Socket = int32(v)
+		return nil
 	case "bpf.cmd":
 		v, ok := value.(int)
 		if !ok {
