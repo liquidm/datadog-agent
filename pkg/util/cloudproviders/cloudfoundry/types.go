@@ -163,6 +163,20 @@ type listSidecarsResponse struct {
 	Resources  []CFSidecar         `json:"resources"`
 }
 
+type IsolationSegmentRelationshipResponse struct {
+	Data []struct {
+		Guid string `json:"guid"`
+	} `json:"data"`
+	Links struct {
+		Self struct {
+			Href string `json:"href"`
+		} `json:"self"`
+		Related struct {
+			Href string `json:"href"`
+		} `json:"related"`
+	} `json:"links"`
+}
+
 type CFOrgQuota struct {
 	GUID        string
 	MemoryLimit int
@@ -575,4 +589,45 @@ func (c *CFClient) ListSidecarsByApp(query url.Values, appGUID string) ([]CFSide
 		}
 	}
 	return sidecars, nil
+}
+
+func (c *CFClient) GetIsolationSegmentRelationshipGUID(href string) ([]string, error) {
+	r := cfclient.Request{
+		method: "GET",
+		url:    href,
+		params: make(map[string][]string),
+	}
+
+	resp, err := c.DoRequest(r)
+	if err != nil {
+		return nil, fmt.Errorf("Error requesting isolation segment relationship: %s", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Error listing isolation segment relationship, response code: %d", resp.StatusCode)
+	}
+
+	defer resp.Body.Close()
+	resBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading isolation segment relationship response: %s", err)
+	}
+
+	var data IsolationSegmentRelationshipResponse
+	err = json.Unmarshal(resBody, &data)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling isolation segment relationship response: %s", err)
+	}
+
+	if len(data.Data) == 0 {
+		return nil, nil
+	}
+
+	var guids []string
+
+	for entry := range data.Data {
+		guids = append(guids, entry.Guid)
+	}
+
+	return guids, nil
 }

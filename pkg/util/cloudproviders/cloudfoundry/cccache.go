@@ -55,6 +55,9 @@ type CCCacheI interface {
 
 	// GetSidecars returns all sidecars for the given application GUID in the cache
 	GetSidecars(string) ([]*CFSidecar, error)
+
+	// GetIsolationSegmentForSpace returns an isolation segment for the given GUID in the cache
+	GetIsolationSegmentForSpace(string) ([]*cfclient.IsolationSegment, error)
 }
 
 // CCCache is a simple structure that caches and automatically refreshes data from Cloud Foundry API
@@ -75,6 +78,7 @@ type CCCache struct {
 	processesByAppGUID   map[string][]*cfclient.Process
 	cfApplicationsByGUID map[string]*CFApplication
 	sidecarsByAppGUID    map[string][]*CFSidecar
+	segmentBySpaceGUID   map[string]*cfclient.IsolationSegment
 	appsBatchSize        int
 }
 
@@ -85,6 +89,8 @@ type CCClientI interface {
 	ListAllProcessesByQuery(url.Values) ([]cfclient.Process, error)
 	ListOrgQuotasByQuery(url.Values) ([]cfclient.OrgQuota, error)
 	ListSidecarsByApp(url.Values, string) ([]CFSidecar, error)
+	ListIsolationSegmentsByQuery(url.Values) ([]cfclient.IsolationSegment, error)
+	GetIsolationSegmentRelationshipGUID(string) (string, error)
 }
 
 var globalCCCache = &CCCache{}
@@ -259,6 +265,15 @@ func (ccc *CCCache) GetOrg(guid string) (*cfclient.V3Organization, error) {
 	return org, nil
 }
 
+func (ccc *CCCache) GetIsolationSegmentForSpace(guid string) (*cfclient.IsolationSegment, error) {
+	ccc.RLock()
+	defer ccc.RUnlock()
+	segment, ok := ccc.segmentBySpaceGUID[guid]
+	if !ok {
+	}
+	return segment, nil
+}
+
 func (ccc *CCCache) start() {
 	ccc.readData()
 	dataRefreshTicker := time.NewTicker(ccc.pollInterval)
@@ -403,6 +418,30 @@ func (ccc *CCCache) readData() {
 				appProcesses = []*cfclient.Process{&v3Process}
 			}
 			processesByAppGUID[appGUID] = appProcesses
+		}
+	}()
+
+	// List isolation segments
+	wg.Add(1)
+	var segmentBySpaceGUID map[string]*cfclient.IsolationSegment
+	go func() {
+		defer wg.Done()
+		query := url.Values{}
+		query.Add("per_page", fmt.Sprintf("%d", ccc.appsBatchSize))
+		segments, err := ccc.ccAPIClient.ListIsolationSegmentsByQuery(query)
+		if err != nil {
+			log.Errorf("Failed listing isolation segments from cloud controller: %v", err)
+			return
+		}
+		segmentBySpaceGUID = make(map[string]*cfclient.IsolationSegment)
+		for segment := range segments {
+			s := segment
+			if segment.Links.Spaces != nil {
+				spacesGuids := ccc.ccAPIClient.GetIsolationSegmentRelationshipGUID(segment.Links.Spaces.Href)
+				for guid := range spacesGuids {
+					segmentBySpaceGUID[guid] = s
+				}
+			}
 		}
 	}()
 

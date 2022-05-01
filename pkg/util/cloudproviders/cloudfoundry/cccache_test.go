@@ -39,6 +39,9 @@ func (t testCCClient) ListSidecarsByApp(_ url.Values, guid string) ([]CFSidecar,
 	}
 	return nil, nil
 }
+func (t testCCClient) ListIsolationSegmentsByQuery(_ url.Values) ([]cfclient.IsolationSegment, error) {
+	return []cfclient.IsolationSegment{cfIsolationSegment1, cfIsolationSegment2}, nil
+}
 
 func TestCCCachePolling(t *testing.T) {
 	assert.NotZero(t, cc.LastUpdated())
@@ -99,4 +102,10 @@ func TestCCCache_GetSidecars(t *testing.T) {
 	assert.EqualValues(t, &cfSidecar2, sidecar2[0])
 	_, err := cc.GetSidecars("not-existing-guid")
 	assert.NotNil(t, err)
+}
+
+func TestCCCache_GetIsolationSegmentForSpace(t *testing.T) {
+	cc.readData()
+	segment1, _ := cc.GetIsolationSegmentForSpace("space_guid_1")
+	assert.EqualValues(t, &cfIsolationSegment1, segment1)
 }
