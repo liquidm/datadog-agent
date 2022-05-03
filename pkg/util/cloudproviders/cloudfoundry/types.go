@@ -591,30 +591,29 @@ func (c *CFClient) ListSidecarsByApp(query url.Values, appGUID string) ([]CFSide
 	return sidecars, nil
 }
 
-// TODO: refactor common logic into a separate function
-func (c *CFClient) GetIsolationSegmentSpaceGUID(guid string) (string, error) {
-	requestURL := "/v3/isolation_segments/" + guid + "/relationships/spaces"
+func (c *CFClient) getIsolationSegmentRelationship(resource, guid string) (string, error) {
+	requestURL := "/v3/isolation_segments/" + guid + "/relationships/" + resource
 	r := c.NewRequest("GET", requestURL)
 
 	resp, err := c.DoRequest(r)
 	if err != nil {
-		return "", fmt.Errorf("Error requesting isolation segment space: %s", err)
+		return "", fmt.Errorf("Error requesting isolation segment %s: %s", resource, err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error listing isolation segment space, response code: %d", resp.StatusCode)
+		return "", fmt.Errorf("Error listing isolation segment %s, response code: %d", resource, resp.StatusCode)
 	}
 
 	defer resp.Body.Close()
 	resBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("Error reading isolation segment space response: %s", err)
+		return "", fmt.Errorf("Error reading isolation segment %s response: %s", resource, err)
 	}
 
 	var data IsolationSegmentRelationshipResponse
 	err = json.Unmarshal(resBody, &data)
 	if err != nil {
-		return "", fmt.Errorf("Error unmarshalling isolation segment space response: %s", err)
+		return "", fmt.Errorf("Error unmarshalling isolation segment %s response: %s", resource, err)
 	}
 
 	if len(data.Data) == 0 {
@@ -624,34 +623,10 @@ func (c *CFClient) GetIsolationSegmentSpaceGUID(guid string) (string, error) {
 	return data.Data[0].Guid, nil
 }
 
+func (c *CFClient) GetIsolationSegmentSpaceGUID(guid string) (string, error) {
+	return c.getIsolationSegmentRelationship("spaces", guid)
+}
+
 func (c *CFClient) GetIsolationSegmentOrganizationGUID(guid string) (string, error) {
-	requestURL := "/v3/isolation_segments/" + guid + "/relationships/organization"
-	r := c.NewRequest("GET", requestURL)
-
-	resp, err := c.DoRequest(r)
-	if err != nil {
-		return "", fmt.Errorf("Error requesting isolation segment organization: %s", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error listing isolation segment organization, response code: %d", resp.StatusCode)
-	}
-
-	defer resp.Body.Close()
-	resBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("Error reading isolation segment organization response: %s", err)
-	}
-
-	var data IsolationSegmentRelationshipResponse
-	err = json.Unmarshal(resBody, &data)
-	if err != nil {
-		return "", fmt.Errorf("Error unmarshalling isolation segment organization response: %s", err)
-	}
-
-	if len(data.Data) == 0 {
-		return "", nil
-	}
-
-	return data.Data[0].Guid, nil
+	return c.getIsolationSegmentRelationship("organizations", guid)
 }
