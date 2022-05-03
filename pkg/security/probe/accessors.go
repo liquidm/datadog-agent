@@ -60,10 +60,18 @@ func (m *Model) GetEventTypes() []eval.EventType {
 }
 func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Evaluator, error) {
 	switch field {
-	case "bind.addr":
-		return &eval.StringEvaluator{
-			EvalFnc: func(ctx *eval.Context) string {
-				return (*Event)(ctx.Object).Bind.Addr
+	case "bind.addr.ip":
+		return &eval.CIDREvaluator{
+			EvalFnc: func(ctx *eval.Context) net.IPNet {
+				return (*Event)(ctx.Object).Bind.Addr.IPNet
+			},
+			Field:  field,
+			Weight: eval.FunctionWeight,
+		}, nil
+	case "bind.addr.port":
+		return &eval.IntEvaluator{
+			EvalFnc: func(ctx *eval.Context) int {
+				return int((*Event)(ctx.Object).Bind.Addr.Port)
 			},
 			Field:  field,
 			Weight: eval.FunctionWeight,
@@ -72,14 +80,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 		return &eval.IntEvaluator{
 			EvalFnc: func(ctx *eval.Context) int {
 				return int((*Event)(ctx.Object).Bind.AddrFamily)
-			},
-			Field:  field,
-			Weight: eval.FunctionWeight,
-		}, nil
-	case "bind.port":
-		return &eval.IntEvaluator{
-			EvalFnc: func(ctx *eval.Context) int {
-				return int((*Event)(ctx.Object).Bind.AddrPort)
 			},
 			Field:  field,
 			Weight: eval.FunctionWeight,
@@ -7031,9 +7031,9 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 }
 func (e *Event) GetFields() []eval.Field {
 	return []eval.Field{
-		"bind.addr",
+		"bind.addr.ip",
+		"bind.addr.port",
 		"bind.addr_family",
-		"bind.port",
 		"bind.retval",
 		"bind.socket",
 		"bpf.cmd",
@@ -7666,12 +7666,12 @@ func (e *Event) GetFields() []eval.Field {
 }
 func (e *Event) GetFieldValue(field eval.Field) (interface{}, error) {
 	switch field {
-	case "bind.addr":
-		return e.Bind.Addr, nil
+	case "bind.addr.ip":
+		return e.Bind.Addr.IPNet, nil
+	case "bind.addr.port":
+		return int(e.Bind.Addr.Port), nil
 	case "bind.addr_family":
 		return int(e.Bind.AddrFamily), nil
-	case "bind.port":
-		return int(e.Bind.AddrPort), nil
 	case "bind.retval":
 		return int(e.Bind.SyscallEvent.Retval), nil
 	case "bind.socket":
@@ -10287,11 +10287,11 @@ func (e *Event) GetFieldValue(field eval.Field) (interface{}, error) {
 }
 func (e *Event) GetFieldEventType(field eval.Field) (eval.EventType, error) {
 	switch field {
-	case "bind.addr":
+	case "bind.addr.ip":
+		return "bind", nil
+	case "bind.addr.port":
 		return "bind", nil
 	case "bind.addr_family":
-		return "bind", nil
-	case "bind.port":
 		return "bind", nil
 	case "bind.retval":
 		return "bind", nil
@@ -11554,11 +11554,11 @@ func (e *Event) GetFieldEventType(field eval.Field) (eval.EventType, error) {
 }
 func (e *Event) GetFieldType(field eval.Field) (reflect.Kind, error) {
 	switch field {
-	case "bind.addr":
-		return reflect.String, nil
-	case "bind.addr_family":
+	case "bind.addr.ip":
+		return reflect.Struct, nil
+	case "bind.addr.port":
 		return reflect.Int, nil
-	case "bind.port":
+	case "bind.addr_family":
 		return reflect.Int, nil
 	case "bind.retval":
 		return reflect.Int, nil
@@ -12821,12 +12821,19 @@ func (e *Event) GetFieldType(field eval.Field) (reflect.Kind, error) {
 }
 func (e *Event) SetFieldValue(field eval.Field, value interface{}) error {
 	switch field {
-	case "bind.addr":
-		str, ok := value.(string)
+	case "bind.addr.ip":
+		v, ok := value.(net.IPNet)
 		if !ok {
-			return &eval.ErrValueTypeMismatch{Field: "Bind.Addr"}
+			return &eval.ErrValueTypeMismatch{Field: "Bind.Addr.IPNet"}
 		}
-		e.Bind.Addr = str
+		e.Bind.Addr.IPNet = v
+		return nil
+	case "bind.addr.port":
+		v, ok := value.(int)
+		if !ok {
+			return &eval.ErrValueTypeMismatch{Field: "Bind.Addr.Port"}
+		}
+		e.Bind.Addr.Port = uint16(v)
 		return nil
 	case "bind.addr_family":
 		v, ok := value.(int)
@@ -12834,13 +12841,6 @@ func (e *Event) SetFieldValue(field eval.Field, value interface{}) error {
 			return &eval.ErrValueTypeMismatch{Field: "Bind.AddrFamily"}
 		}
 		e.Bind.AddrFamily = uint16(v)
-		return nil
-	case "bind.port":
-		v, ok := value.(int)
-		if !ok {
-			return &eval.ErrValueTypeMismatch{Field: "Bind.AddrPort"}
-		}
-		e.Bind.AddrPort = uint16(v)
 		return nil
 	case "bind.retval":
 		v, ok := value.(int)
