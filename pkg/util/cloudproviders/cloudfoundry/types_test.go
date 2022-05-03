@@ -91,29 +91,13 @@ var cfSidecar2 = CFSidecar{
 }
 
 var cfIsolationSegment1 = cfclient.IsolationSegment{
-	GUID: "isolation_segment_guid_1"
-	Name: "isolation_segment_name_1"
-	Links: {
-		Self: {
-			Href: "self_link_1"
-		},
-		Spaces: {
-			Href: "spaces_link_1"
-		}
-	}
+	GUID: "isolation_segment_guid_1",
+	Name: "isolation_segment_name_1",
 }
 
 var cfIsolationSegment2 = cfclient.IsolationSegment{
-	GUID: "isolation_segment_guid_2"
-	Name: "isolation_segment_name_2"
-	Links: {
-		Self: {
-			Href: "self_link_2"
-		},
-		Organizations: {
-			Href: "organizations_link_2"
-		}
-	}
+	GUID: "isolation_segment_guid_2",
+	Name: "isolation_segment_name_2",
 }
 
 type Links struct {

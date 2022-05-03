@@ -57,7 +57,10 @@ type CCCacheI interface {
 	GetSidecars(string) ([]*CFSidecar, error)
 
 	// GetIsolationSegmentForSpace returns an isolation segment for the given GUID in the cache
-	GetIsolationSegmentForSpace(string) ([]*cfclient.IsolationSegment, error)
+	GetIsolationSegmentForSpace(string) (*cfclient.IsolationSegment, error)
+
+	// GetIsolationSegmentForOrg returns an isolation segment for the given GUID in the cache
+	GetIsolationSegmentForOrg(string) (*cfclient.IsolationSegment, error)
 }
 
 // CCCache is a simple structure that caches and automatically refreshes data from Cloud Foundry API
@@ -79,6 +82,7 @@ type CCCache struct {
 	cfApplicationsByGUID map[string]*CFApplication
 	sidecarsByAppGUID    map[string][]*CFSidecar
 	segmentBySpaceGUID   map[string]*cfclient.IsolationSegment
+	segmentByOrgGUID     map[string]*cfclient.IsolationSegment
 	appsBatchSize        int
 }
 
@@ -90,7 +94,8 @@ type CCClientI interface {
 	ListOrgQuotasByQuery(url.Values) ([]cfclient.OrgQuota, error)
 	ListSidecarsByApp(url.Values, string) ([]CFSidecar, error)
 	ListIsolationSegmentsByQuery(url.Values) ([]cfclient.IsolationSegment, error)
-	GetIsolationSegmentRelationshipGUID(string) (string, error)
+	GetIsolationSegmentSpaceGUID(string) (string, error)
+	GetIsolationSegmentOrganizationGUID(string) (string, error)
 }
 
 var globalCCCache = &CCCache{}
@@ -265,11 +270,24 @@ func (ccc *CCCache) GetOrg(guid string) (*cfclient.V3Organization, error) {
 	return org, nil
 }
 
+// GetIsolationSegmentForSpace returns an isolation segment for the given GUID in the cache
 func (ccc *CCCache) GetIsolationSegmentForSpace(guid string) (*cfclient.IsolationSegment, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
 	segment, ok := ccc.segmentBySpaceGUID[guid]
 	if !ok {
+		return nil, fmt.Errorf("could not find isolation segment for space %s in cloud controller cache", guid)
+	}
+	return segment, nil
+}
+
+// GetIsolationSegmentForOrg returns an isolation segment for the given GUID in the cache
+func (ccc *CCCache) GetIsolationSegmentForOrg(guid string) (*cfclient.IsolationSegment, error) {
+	ccc.RLock()
+	defer ccc.RUnlock()
+	segment, ok := ccc.segmentByOrgGUID[guid]
+	if !ok {
+		return nil, fmt.Errorf("could not find isolation segment for organization %s in cloud controller cache", guid)
 	}
 	return segment, nil
 }
@@ -424,6 +442,7 @@ func (ccc *CCCache) readData() {
 	// List isolation segments
 	wg.Add(1)
 	var segmentBySpaceGUID map[string]*cfclient.IsolationSegment
+	var segmentByOrgGUID map[string]*cfclient.IsolationSegment
 	go func() {
 		defer wg.Done()
 		query := url.Values{}
@@ -434,14 +453,23 @@ func (ccc *CCCache) readData() {
 			return
 		}
 		segmentBySpaceGUID = make(map[string]*cfclient.IsolationSegment)
-		for segment := range segments {
+		segmentByOrgGUID = make(map[string]*cfclient.IsolationSegment)
+		for _, segment := range segments {
 			s := segment
-			if segment.Links.Spaces != nil {
-				spacesGuids := ccc.ccAPIClient.GetIsolationSegmentRelationshipGUID(segment.Links.Spaces.Href)
-				for guid := range spacesGuids {
-					segmentBySpaceGUID[guid] = s
-				}
+			spaceGUID, err := ccc.ccAPIClient.GetIsolationSegmentSpaceGUID(segment.GUID)
+			if err == nil && spaceGUID != "" {
+				segmentBySpaceGUID[spaceGUID] = &s
+			} else {
+				log.Errorf("Failed listing isolation segment space: %s", err)
 			}
+
+			orgGUID, err := ccc.ccAPIClient.GetIsolationSegmentOrganizationGUID(segment.GUID)
+			if err == nil && orgGUID != "" {
+				segmentByOrgGUID[orgGUID] = &s
+			} else {
+				log.Errorf("Failed listing isolation segment organization: %s", err)
+			}
+
 		}
 	}()
 
@@ -489,6 +517,8 @@ func (ccc *CCCache) readData() {
 	ccc.Lock()
 	defer ccc.Unlock()
 
+	ccc.segmentBySpaceGUID = segmentBySpaceGUID
+	ccc.segmentByOrgGUID = segmentByOrgGUID
 	ccc.sidecarsByAppGUID = sidecarsByAppGUID
 	ccc.appsByGUID = appsByGUID
 	ccc.spacesByGUID = spacesByGUID

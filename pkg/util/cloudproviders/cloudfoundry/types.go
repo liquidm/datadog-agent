@@ -591,43 +591,67 @@ func (c *CFClient) ListSidecarsByApp(query url.Values, appGUID string) ([]CFSide
 	return sidecars, nil
 }
 
-func (c *CFClient) GetIsolationSegmentRelationshipGUID(href string) ([]string, error) {
-	r := cfclient.Request{
-		method: "GET",
-		url:    href,
-		params: make(map[string][]string),
-	}
+// TODO: refactor common logic into a separate function
+func (c *CFClient) GetIsolationSegmentSpaceGUID(guid string) (string, error) {
+	requestURL := "/v3/isolation_segments/" + guid + "/relationships/spaces"
+	r := c.NewRequest("GET", requestURL)
 
 	resp, err := c.DoRequest(r)
 	if err != nil {
-		return nil, fmt.Errorf("Error requesting isolation segment relationship: %s", err)
+		return "", fmt.Errorf("Error requesting isolation segment space: %s", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Error listing isolation segment relationship, response code: %d", resp.StatusCode)
+		return "", fmt.Errorf("Error listing isolation segment space, response code: %d", resp.StatusCode)
 	}
 
 	defer resp.Body.Close()
 	resBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading isolation segment relationship response: %s", err)
+		return "", fmt.Errorf("Error reading isolation segment space response: %s", err)
 	}
 
 	var data IsolationSegmentRelationshipResponse
 	err = json.Unmarshal(resBody, &data)
 	if err != nil {
-		return nil, fmt.Errorf("Error unmarshalling isolation segment relationship response: %s", err)
+		return "", fmt.Errorf("Error unmarshalling isolation segment space response: %s", err)
 	}
 
 	if len(data.Data) == 0 {
-		return nil, nil
+		return "", nil
 	}
 
-	var guids []string
+	return data.Data[0].Guid, nil
+}
 
-	for entry := range data.Data {
-		guids = append(guids, entry.Guid)
+func (c *CFClient) GetIsolationSegmentOrganizationGUID(guid string) (string, error) {
+	requestURL := "/v3/isolation_segments/" + guid + "/relationships/organization"
+	r := c.NewRequest("GET", requestURL)
+
+	resp, err := c.DoRequest(r)
+	if err != nil {
+		return "", fmt.Errorf("Error requesting isolation segment organization: %s", err)
 	}
 
-	return guids, nil
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Error listing isolation segment organization, response code: %d", resp.StatusCode)
+	}
+
+	defer resp.Body.Close()
+	resBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("Error reading isolation segment organization response: %s", err)
+	}
+
+	var data IsolationSegmentRelationshipResponse
+	err = json.Unmarshal(resBody, &data)
+	if err != nil {
+		return "", fmt.Errorf("Error unmarshalling isolation segment organization response: %s", err)
+	}
+
+	if len(data.Data) == 0 {
+		return "", nil
+	}
+
+	return data.Data[0].Guid, nil
 }
