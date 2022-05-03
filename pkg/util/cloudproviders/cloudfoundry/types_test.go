@@ -301,7 +301,7 @@ var ExpectedD1 = DesiredLRP{
 	ProcessGUID:      "0123456789012345678901234567890123456789",
 	SpaceGUID:        "space_guid_1",
 	SpaceName:        "space_name_1",
-	CustomTags:       []string{"env:test-env", "service:test-service", "sidecar_present:true", "sidecar_count:1"},
+	CustomTags:       []string{"env:test-env", "service:test-service", "sidecar_present:true", "sidecar_count:1", "segment_id:isolation_segment_guid_1", "segment_name:isolation_segment_name_1"},
 }
 
 var ExpectedD2 = DesiredLRP{
@@ -329,6 +329,8 @@ var ExpectedD2 = DesiredLRP{
 		"service:test-service",
 		"sidecar_present:true",
 		"sidecar_count:1",
+		"segment_id:isolation_segment_guid_1",
+		"segment_name:isolation_segment_name_1",
 	},
 }
 

@@ -316,6 +316,13 @@ func DesiredLRPFromBBSModel(bbsLRP *models.DesiredLRP, includeList, excludeList 
 				} else {
 					customTags = append(customTags, fmt.Sprintf("%s:%s", SidecarPresentTagKey, "false"))
 				}
+				if segment, err := ccCache.GetIsolationSegmentForOrg(orgGUID); err == nil {
+					customTags = append(customTags, fmt.Sprintf("%s:%s", SegmentIDTagKey, segment.GUID))
+					customTags = append(customTags, fmt.Sprintf("%s:%s", SegmentNameTagKey, segment.Name))
+				} else if segment, err := ccCache.GetIsolationSegmentForSpace(spaceGUID); err == nil {
+					customTags = append(customTags, fmt.Sprintf("%s:%s", SegmentIDTagKey, segment.GUID))
+					customTags = append(customTags, fmt.Sprintf("%s:%s", SegmentNameTagKey, segment.Name))
+				}
 			}
 		}
 	} else {
