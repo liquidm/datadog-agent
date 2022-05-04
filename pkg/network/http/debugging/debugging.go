@@ -58,12 +58,12 @@ func HTTP(stats map[http.Key]http.RequestStats, dns map[util.Address][]dns.Hostn
 			ByStatus: make(map[int]Stats),
 		}
 
-		for i, stat := range v {
+		for status := 100; status <= 500; status += 100 {
+			stat := v.Stats(status)
 			if stat.Count == 0 {
 				continue
 			}
 
-			status := (i + 1) * 100
 			debug.ByStatus[status] = Stats{
 				Count:              stat.Count,
 				FirstLatencySample: stat.FirstLatencySample,
