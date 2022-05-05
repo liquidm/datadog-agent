@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Upgrade to Docker client 20.10, allowing to greatly reduce the duration of `docker` check on Windows (require Docker >= 20.10 on the host).
