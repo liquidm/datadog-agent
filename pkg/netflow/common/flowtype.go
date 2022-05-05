@@ -10,10 +10,10 @@ type FlowType string
 // Flow Types
 const (
 	TypeIPFIX    FlowType = "ipfix"
-	TypeSFlow5            = "sflow5"
-	TypeNetFlow5          = "netflow5"
-	TypeNetFlow9          = "netflow9"
-	TypeUnknown           = "unknown"
+	TypeSFlow5   FlowType = "sflow5"
+	TypeNetFlow5 FlowType = "netflow5"
+	TypeNetFlow9 FlowType = "netflow9"
+	TypeUnknown  FlowType = "unknown"
 )
 
 // FlowTypeDetails contain list of valid FlowTypeDetail
