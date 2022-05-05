@@ -31,6 +31,9 @@ const (
 	// EventTypeNetworkDevicesMetadata is the event type for network devices metadata
 	EventTypeNetworkDevicesMetadata = "network-devices-metadata"
 
+	// EventTypeSnmpTraps is the event type for snmp traps
+	EventTypeSnmpTraps = "network-devices-snmp-traps"
+
 	// EventTypeNetworkDevicesNetFlow is the event type for network devices NetFlow data
 	EventTypeNetworkDevicesNetFlow = "network-devices-netflow"
 )
@@ -71,6 +74,15 @@ var passthroughPipelineDescs = []passthroughPipelineDesc{
 		endpointsConfigPrefix:         "network_devices.metadata.",
 		hostnameEndpointPrefix:        "ndm-intake.",
 		intakeTrackType:               "ndm",
+		defaultBatchMaxConcurrentSend: 10,
+		defaultBatchMaxContentSize:    pkgconfig.DefaultBatchMaxContentSize,
+		defaultBatchMaxSize:           pkgconfig.DefaultBatchMaxSize,
+	},
+	{
+		eventType:                     EventTypeSnmpTraps,
+		endpointsConfigPrefix:         "network_devices.snmp_traps.forwarder.",
+		hostnameEndpointPrefix:        "snmp-traps-intake.",
+		intakeTrackType:               "ndmtraps",
 		defaultBatchMaxConcurrentSend: 10,
 		defaultBatchMaxContentSize:    pkgconfig.DefaultBatchMaxContentSize,
 		defaultBatchMaxSize:           pkgconfig.DefaultBatchMaxSize,
