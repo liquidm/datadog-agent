@@ -1,0 +1,53 @@
+---
+kind: pipeline
+type: kubernetes
+name: default
+
+volumes:
+  - name: var-run
+    host:
+      path: /var/run/
+  - name: root-docker
+    host:
+      path: /root/.docker/
+
+setup: &setup
+  image: registry.lqm.io/dind
+  volumes:
+    - name: var-run
+      path: /var/run/
+    - name: root-docker
+      path: /root/.docker/
+  environment:
+    GSUTIL_CONFIG_JSON:
+      from_secret: GSUTIL_CONFIG_JSON
+
+steps:
+  - name: build
+    <<: *setup
+    commands:
+      - make image
+
+  - name: publish image
+    <<: *setup
+    commands:
+      - make publish-image
+
+  - name: publish artifact
+    <<: *setup
+    commands:
+      - gsutil-login.sh
+      - make publish-artifact
+
+
+#- name: deploy ams
+#  <<: *setup
+#  image: registry.lqm.io/kubedrone
+#  environment:
+#    topic: heimdall_4d58177
+#    cluster: ams
+#  commands:
+#  - kubedrone template=scripts/base-kubedrone-ams.tmpl
+#  when:
+#    branch:
+#    - production
