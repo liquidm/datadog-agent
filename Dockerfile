@@ -1,6 +1,6 @@
 ARG GOVERSION=1.17.3
 FROM registry.lqm.io/golang:${GOVERSION}
-WORKDIR /var/app/datadog-client
+WORKDIR /var/app/datadog-agent
 
 COPY . .
 
