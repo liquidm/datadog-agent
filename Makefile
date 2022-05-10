@@ -1,4 +1,4 @@
-PROJECT_NAME = datadog-client
+PROJECT_NAME = datadog-agent
 
 PROJECT_REV = $(shell git rev-parse HEAD)
 PROJECT_IMAGE = registry.lqm.io/$(PROJECT_NAME):$(PROJECT_REV)
